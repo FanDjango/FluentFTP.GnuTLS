@@ -27,8 +27,8 @@ namespace FluentFTP.GnuTLS.Core {
 		#region FunctionLoader
 		private const string dllNameLinuxUtil = @"libdl.so.2";
 		private const string dllNameMonoUtil = @"libdl";
-		private const string dllNameWindowsUtil = @"Kernel32.dll";
 		private const string dllNameOSXUtil = @"libdl.dylib";
+		private const string dllNameWindowsUtil = @"Kernel32.dll";
 
 		private static IntPtr dllPtr = IntPtr.Zero;
 		private static bool functionsAreLoaded = false;
@@ -139,6 +139,95 @@ namespace FluentFTP.GnuTLS.Core {
 			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlsym(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string symbol);
 			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern int dlclose(IntPtr handle);
+
+			public void Load(string dllPath, bool storePointer = true) {
+				IntPtr hModule;
+				IntPtr errMsgPtr = IntPtr.Zero;
+				string errMsg = string.Empty;
+
+				_ = dlerror();
+				hModule = dlopen(dllPath, 2);
+
+				if (hModule == IntPtr.Zero) {
+					errMsgPtr = dlerror();
+					if (errMsgPtr != IntPtr.Zero) {
+						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
+					}
+					throw new GnuTlsException("Could not load " + dllPath + ", " + errMsg);
+				}
+
+				if (storePointer) {
+					dllPtr = hModule;
+				}
+				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Loaded: " + dllPath + ")");
+			}
+
+			public Delegate LoadFunction<T>(string entryName, bool exportIsValueType = false) {
+				IntPtr pFunc;
+				IntPtr errMsgPtr = IntPtr.Zero;
+				string errMsg = string.Empty;
+
+				_ = dlerror();
+				pFunc = dlsym(dllPtr, entryName);
+
+				if (pFunc == IntPtr.Zero) {
+					errMsgPtr = dlerror();
+					if (errMsgPtr != IntPtr.Zero) {
+						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
+					}
+					throw new GnuTlsException("Could not find entry " + entryName + ", " + errMsg);
+				}
+
+				if (exportIsValueType) {
+					// If the entry point is exported as a value, DllImport would handle it incorrectly.
+					// It then needs an additional dereference to work correctly.
+					pFunc = (IntPtr)Marshal.PtrToStructure(pFunc, typeof(IntPtr));
+				}
+
+				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*LoadFunction (Found entry '" + entryName + "')");
+
+				return Marshal.GetDelegateForFunctionPointer(pFunc, typeof(T));
+			}
+
+			public void Free() {
+				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Free (Unload .dll libraries");
+
+				IntPtr errMsgPtr = IntPtr.Zero;
+				string errMsg = string.Empty;
+
+				_ = dlerror();
+				int result = dlclose(dllPtr);
+
+				if (result != 1) {
+					errMsgPtr = dlerror();
+					if (errMsgPtr != IntPtr.Zero) {
+						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
+					}
+					throw new GnuTlsException("Could not free library, " + errMsg);
+				}
+
+				dllPtr = IntPtr.Zero;
+
+				functionsAreLoaded = false;
+			}
+
+			public bool SetDllPath(string dllPath) {
+				return true;
+			}
+		}
+		#endregion
+
+		#region FunctionLoaderOSX
+		private class FunctionLoaderOSX : FunctionLoader {
+
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern IntPtr dlerror();
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern IntPtr dlopen([MarshalAs(UnmanagedType.LPStr)] string filename, int flags);
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern IntPtr dlsym(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string symbol);
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern int dlclose(IntPtr handle);
 
 			public void Load(string dllPath, bool storePointer = true) {
@@ -334,95 +423,6 @@ namespace FluentFTP.GnuTLS.Core {
 				dllPtr = IntPtr.Zero;
 
 				functionsAreLoaded = false;
-			}
-		}
-		#endregion
-
-		#region FunctionLoaderOSX
-		private class FunctionLoaderOSX : FunctionLoader {
-
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-			private static extern IntPtr dlerror();
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-			private static extern IntPtr dlopen([MarshalAs(UnmanagedType.LPStr)] string filename, int flags);
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-			private static extern IntPtr dlsym(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string symbol);
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-			private static extern int dlclose(IntPtr handle);
-
-			public void Load(string dllPath, bool storePointer = true) {
-				IntPtr hModule;
-				IntPtr errMsgPtr = IntPtr.Zero;
-				string errMsg = string.Empty;
-
-				_ = dlerror();
-				hModule = dlopen(dllPath, 2);
-
-				if (hModule == IntPtr.Zero) {
-					errMsgPtr = dlerror();
-					if (errMsgPtr != IntPtr.Zero) {
-						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
-					}
-					throw new GnuTlsException("Could not load " + dllPath + ", " + errMsg);
-				}
-
-				if (storePointer) {
-					dllPtr = hModule;
-				}
-				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Loaded: " + dllPath + ")");
-			}
-
-			public Delegate LoadFunction<T>(string entryName, bool exportIsValueType = false) {
-				IntPtr pFunc;
-				IntPtr errMsgPtr = IntPtr.Zero;
-				string errMsg = string.Empty;
-
-				_ = dlerror();
-				pFunc = dlsym(dllPtr, entryName);
-
-				if (pFunc == IntPtr.Zero) {
-					errMsgPtr = dlerror();
-					if (errMsgPtr != IntPtr.Zero) {
-						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
-					}
-					throw new GnuTlsException("Could not find entry " + entryName + ", " + errMsg);
-				}
-
-				if (exportIsValueType) {
-					// If the entry point is exported as a value, DllImport would handle it incorrectly.
-					// It then needs an additional dereference to work correctly.
-					pFunc = (IntPtr)Marshal.PtrToStructure(pFunc, typeof(IntPtr));
-				}
-
-				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*LoadFunction (Found entry '" + entryName + "')");
-
-				return Marshal.GetDelegateForFunctionPointer(pFunc, typeof(T));
-			}
-
-			public void Free() {
-				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Free (Unload .dll libraries");
-
-				IntPtr errMsgPtr = IntPtr.Zero;
-				string errMsg = string.Empty;
-
-				_ = dlerror();
-				int result = dlclose(dllPtr);
-
-				if (result != 1) {
-					errMsgPtr = dlerror();
-					if (errMsgPtr != IntPtr.Zero) {
-						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
-					}
-					throw new GnuTlsException("Could not free library, " + errMsg);
-				}
-
-				dllPtr = IntPtr.Zero;
-
-				functionsAreLoaded = false;
-			}
-
-			public bool SetDllPath(string dllPath) {
-				return true;
 			}
 		}
 		#endregion
