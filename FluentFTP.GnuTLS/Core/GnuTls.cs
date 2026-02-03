@@ -11,7 +11,15 @@ namespace FluentFTP.GnuTLS.Core {
 	// If GnuTlsGlobalDeInit is called the same number of times as GnuTlsGlobalInit, the library is freed and true is returned
 	internal static class GnuTls {
 
-		public static bool IsLinux { get; } = (int)Environment.OSVersion.Platform == 4 || (int)Environment.OSVersion.Platform == 6 || (int)Environment.OSVersion.Platform == 128;
+
+		public static bool IsUnix { get; } = (int)Environment.OSVersion.Platform == 4 || (int)Environment.OSVersion.Platform == 6 || (int)Environment.OSVersion.Platform == 128;
+#if NET462
+		public static bool IsLinux { get; } = (int)Environment.OSVersion.Platform == 4 || (int)Environment.OSVersion.Platform == 128;
+		public static bool IsOSX { get; } = (int)Environment.OSVersion.Platform == 6;
+#else
+		public static bool IsLinux { get; } = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+		public static bool IsOSX { get; } = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+#endif
 		public static bool IsMono { get; } = Type.GetType("Mono.Runtime") != null;
 
 		public static string loadLibraryDllNamePrefix = string.Empty;
@@ -20,6 +28,7 @@ namespace FluentFTP.GnuTLS.Core {
 		private const string dllNameLinuxUtil = @"libdl.so.2";
 		private const string dllNameMonoUtil = @"libdl";
 		private const string dllNameWindowsUtil = @"Kernel32.dll";
+		private const string dllNameOSXUtil = @"libdl.dylib";
 
 		private static IntPtr dllPtr = IntPtr.Zero;
 		private static bool functionsAreLoaded = false;
@@ -31,6 +40,7 @@ namespace FluentFTP.GnuTLS.Core {
 			bool SetDllPath(string dllPath);
 		}
 
+		#region FunctionLoaderLinux
 		private class FunctionLoaderLinux : FunctionLoader {
 
 			[DllImport(dllNameLinuxUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
@@ -117,7 +127,9 @@ namespace FluentFTP.GnuTLS.Core {
 				return true;
 			}
 		}
+		#endregion
 
+		#region FunctionLoaderMono
 		private class FunctionLoaderMono : FunctionLoader {
 
 			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
@@ -204,7 +216,9 @@ namespace FluentFTP.GnuTLS.Core {
 				return true;
 			}
 		}
+		#endregion
 
+		#region FunctionLoaderWindows
 		private class FunctionLoaderWindows : FunctionLoader {
 
 			[System.Flags]
@@ -322,6 +336,96 @@ namespace FluentFTP.GnuTLS.Core {
 				functionsAreLoaded = false;
 			}
 		}
+		#endregion
+
+		#region FunctionLoaderOSX
+		private class FunctionLoaderOSX : FunctionLoader {
+
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern IntPtr dlerror();
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern IntPtr dlopen([MarshalAs(UnmanagedType.LPStr)] string filename, int flags);
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern IntPtr dlsym(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string symbol);
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			private static extern int dlclose(IntPtr handle);
+
+			public void Load(string dllPath, bool storePointer = true) {
+				IntPtr hModule;
+				IntPtr errMsgPtr = IntPtr.Zero;
+				string errMsg = string.Empty;
+
+				_ = dlerror();
+				hModule = dlopen(dllPath, 2);
+
+				if (hModule == IntPtr.Zero) {
+					errMsgPtr = dlerror();
+					if (errMsgPtr != IntPtr.Zero) {
+						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
+					}
+					throw new GnuTlsException("Could not load " + dllPath + ", " + errMsg);
+				}
+
+				if (storePointer) {
+					dllPtr = hModule;
+				}
+				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Loaded: " + dllPath + ")");
+			}
+
+			public Delegate LoadFunction<T>(string entryName, bool exportIsValueType = false) {
+				IntPtr pFunc;
+				IntPtr errMsgPtr = IntPtr.Zero;
+				string errMsg = string.Empty;
+
+				_ = dlerror();
+				pFunc = dlsym(dllPtr, entryName);
+
+				if (pFunc == IntPtr.Zero) {
+					errMsgPtr = dlerror();
+					if (errMsgPtr != IntPtr.Zero) {
+						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
+					}
+					throw new GnuTlsException("Could not find entry " + entryName + ", " + errMsg);
+				}
+
+				if (exportIsValueType) {
+					// If the entry point is exported as a value, DllImport would handle it incorrectly.
+					// It then needs an additional dereference to work correctly.
+					pFunc = (IntPtr)Marshal.PtrToStructure(pFunc, typeof(IntPtr));
+				}
+
+				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*LoadFunction (Found entry '" + entryName + "')");
+
+				return Marshal.GetDelegateForFunctionPointer(pFunc, typeof(T));
+			}
+
+			public void Free() {
+				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Free (Unload .dll libraries");
+
+				IntPtr errMsgPtr = IntPtr.Zero;
+				string errMsg = string.Empty;
+
+				_ = dlerror();
+				int result = dlclose(dllPtr);
+
+				if (result != 1) {
+					errMsgPtr = dlerror();
+					if (errMsgPtr != IntPtr.Zero) {
+						errMsg = Marshal.PtrToStringAnsi(errMsgPtr);
+					}
+					throw new GnuTlsException("Could not free library, " + errMsg);
+				}
+
+				dllPtr = IntPtr.Zero;
+
+				functionsAreLoaded = false;
+			}
+
+			public bool SetDllPath(string dllPath) {
+				return true;
+			}
+		}
+		#endregion
 
 		#endregion
 
@@ -342,28 +446,44 @@ namespace FluentFTP.GnuTLS.Core {
 
 			FunctionLoader functionLoader;
 
-			if (IsLinux) {
-				if (IsMono) {
-					useDllName = @"libgnutls";
-					functionLoader = new FunctionLoaderMono();
-					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for mono)");
-				}
-				else {
+			if (IsUnix) {
+				// Unix platforms
+				if (IsLinux) {
+					// Linux
 					useDllName = @"libgnutls.so.30";
 					functionLoader = new FunctionLoaderLinux();
 					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for linux)");
 				}
+				else if (IsMono) {
+					// Mono
+					useDllName = @"libgnutls";
+					functionLoader = new FunctionLoaderMono();
+					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for mono)");
+				}
+				else if (IsOSX) {
+					// OSX
+					useDllName = loadLibraryDllNamePrefix + @"libgnutls.30.dylib";
+					functionLoader = new FunctionLoaderOSX();
+					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for OSX)");
+				}
+				else {
+					// Unsupported Unix platform
+					throw new GnuTlsException("Unsupported Unix platform");
+				}
 			}
 			else {
+				// Windows
 				useDllName = @"libgnutls-30.dll";
 				functionLoader = new FunctionLoaderWindows();
 				Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for windows)");
 			}
 
-			if (IsLinux || loadLibraryDllNamePrefix == string.Empty) {
+			if (IsUnix || loadLibraryDllNamePrefix == string.Empty) {
+				// Unix platforms and Windows with no prefix set
 				functionLoader.Load(useDllName);
 			}
 			else {
+				// Windows with a prefix set
 				if (loadLibraryDllNamePrefix == "ClickOnceSingleFile") {
 					string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
 					string strWorkPath = System.IO.Path.GetDirectoryName(strExeFilePath);
