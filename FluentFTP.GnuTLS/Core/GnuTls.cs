@@ -13,7 +13,6 @@ namespace FluentFTP.GnuTLS.Core {
 	// If GnuTlsGlobalDeInit is called the same number of times as GnuTlsGlobalInit, the library is freed and true is returned
 	internal static class GnuTls {
 
-
 		public static bool IsUnix { get; } = (int)Environment.OSVersion.Platform == 4 || (int)Environment.OSVersion.Platform == 6 || (int)Environment.OSVersion.Platform == 128;
 #if NET462
 		public static bool IsLinux { get; } = (int)Environment.OSVersion.Platform == 4 || (int)Environment.OSVersion.Platform == 128;
@@ -29,11 +28,6 @@ namespace FluentFTP.GnuTLS.Core {
 		#region FunctionLoader
 		// See DOC #1 at the end of this file for explanation of .NET DllImport search order
 
-		private const string dllNameLinuxUtil = @"libdl.so.2";
-		private const string dllNameMonoUtil = @"libdl";
-		private const string dllNameOSXUtil = @"libdl.dylib";
-		private const string dllNameWindowsUtil = @"Kernel32.dll";
-
 		private static IntPtr dllPtr = IntPtr.Zero;
 		private static bool functionsAreLoaded = false;
 
@@ -46,6 +40,7 @@ namespace FluentFTP.GnuTLS.Core {
 
 		#region FunctionLoaderLinux
 		private class FunctionLoaderLinux : FunctionLoader {
+			private const string dllNameLinuxUtil = @"libdl.so.2";
 
 			[DllImport(dllNameLinuxUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlerror();
@@ -135,6 +130,7 @@ namespace FluentFTP.GnuTLS.Core {
 
 		#region FunctionLoaderMono
 		private class FunctionLoaderMono : FunctionLoader {
+			private const string dllNameMonoUtil = @"libdl";
 
 			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlerror();
@@ -224,6 +220,7 @@ namespace FluentFTP.GnuTLS.Core {
 
 		#region FunctionLoaderOSX
 		private class FunctionLoaderOSX : FunctionLoader {
+			private const string dllNameOSXUtil = @"libdl.dylib";
 
 			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlerror();
@@ -313,6 +310,7 @@ namespace FluentFTP.GnuTLS.Core {
 
 		#region FunctionLoaderWindows
 		private class FunctionLoaderWindows : FunctionLoader {
+			private const string dllNameWindowsUtil = @"Kernel32.dll";
 
 			[System.Flags]
 			private enum ErrorModes : uint {
@@ -1325,6 +1323,11 @@ namespace FluentFTP.GnuTLS.Core {
 }
 
 // DOC #1
+
+//Absolute paths in library names (for example, /usr/lib/libc.so) are
+//treated as-is and no variations will be searched.
+
+//Otherwise, the runtime will try various name variations according to the platform:
 
 //When running on Windows, the DLL is searched for in the following order:
 
