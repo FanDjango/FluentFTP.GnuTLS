@@ -1,9 +1,11 @@
-﻿using FluentFTP.GnuTLS.Enums;
-
-using System;
+﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Xml.Linq;
+
+using FluentFTP.GnuTLS.Enums;
 
 namespace FluentFTP.GnuTLS.Core {
 	// Wrapper that handles loading the external GnuTls library
@@ -25,6 +27,8 @@ namespace FluentFTP.GnuTLS.Core {
 		public static string loadLibraryDllNamePrefix = string.Empty;
 
 		#region FunctionLoader
+		// See DOC #1 at the end of this file for explanation of .NET DllImport search order
+
 		private const string dllNameLinuxUtil = @"libdl.so.2";
 		private const string dllNameMonoUtil = @"libdl";
 		private const string dllNameOSXUtil = @"libdl.dylib";
@@ -1319,3 +1323,30 @@ namespace FluentFTP.GnuTLS.Core {
 		#endregion
 	}
 }
+
+// DOC #1
+
+//When running on Windows, the DLL is searched for in the following order:
+
+//nativedep
+//nativedep.dll(if the library name does not already end with .dll or .exe)
+
+//When running on Linux or macOS, the runtime will try prepending lib and
+//appending the canonical shared library extension. On these OSes, library
+//name variations are tried in the following order:
+
+//nativedep.so / nativedep.dylib
+//libnativedep.so / libnativedep.dylib 1
+//nativedep
+//libnativedep 1
+
+//On Linux, the search order is different IF the library name ends with .so
+//or contains .so. (note the trailing .). Consider the following example:
+
+//In this case, the library name variations are tried in the following order:
+
+//nativedep.so.6
+//libnativedep.so.6 1
+//nativedep.so.6.so
+//libnativedep.so.6.so 1
+//1 Path is checked only if the library name does not contain a directory separator character
