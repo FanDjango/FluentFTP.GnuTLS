@@ -198,7 +198,14 @@ namespace FluentFTP.GnuTLS {
 						int count = GnuTls.GnuTlsRecordCheckPending(sess);
 						if (count > 0) {
 							byte[] buf = new byte[count];
-							Read(buf, 0, count);
+							int totalRead = 0;
+							while (totalRead < count) {
+								int bytesRead = Read(buf, totalRead, count - totalRead);
+								if (bytesRead <= 0) {
+									break;
+						}
+								totalRead += bytesRead;
+							}
 						}
 						GnuTls.GnuTlsBye(sess, CloseRequestT.GNUTLS_SHUT_RDWR, ctimeout);
 					}
