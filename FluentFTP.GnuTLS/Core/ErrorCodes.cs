@@ -7,7 +7,7 @@ namespace FluentFTP.GnuTLS.Core {
 		/// <summary>
 		/// Enum representing GnuTLS error codes.
 		/// </summary>
-		public enum en : int {
+		public enum errNo : int {
 			GNUTLS_E_SUCCESS = 0,
 			GNUTLS_E_SOCKET = -1,
 			GNUTLS_E_UNKNOWN_COMPRESSION_ALGORITHM = -3,
@@ -224,7 +224,7 @@ namespace FluentFTP.GnuTLS.Core {
 
 		private static Dictionary<int, string> CreateEc() {
 			var dict = new Dictionary<int, string>();
-			foreach (var field in typeof(en).GetFields(BindingFlags.Public | BindingFlags.Static)) {
+			foreach (var field in typeof(errNo).GetFields(BindingFlags.Public | BindingFlags.Static)) {
 				int value = (int)field.GetValue(null);
 				if (!dict.ContainsKey(value)) {
 					dict[value] = field.Name;

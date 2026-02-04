@@ -806,13 +806,13 @@ namespace FluentFTP.GnuTLS.Core {
 			do {
 				long msElapsed = stopWatch.ElapsedMilliseconds;
 				if (msElapsed > ctimeout) {
-					GnuUtils.Check(gcm, (int)EC.en.GNUTLS_E_SOCKET);
+					GnuUtils.Check(gcm, (int)EC.errNo.GNUTLS_E_SOCKET);
 					return 0;
 				}
 
 				result = gnutls_handshake_h(session.ptr);
 
-				if (result >= (int)EC.en.GNUTLS_E_SUCCESS) {
+				if (result >= (int)EC.errNo.GNUTLS_E_SUCCESS) {
 					break;
 				}
 
@@ -822,17 +822,17 @@ namespace FluentFTP.GnuTLS.Core {
 					repeatCount++;
 
 					if (repeatCount <= 2 || repeatCount % 100 == 0) {
-						Logging.LogGnuFunc(GnuMessage.Handshake, gcm + " repeat due to " + Enum.GetName(typeof(EC.en), result));
+						Logging.LogGnuFunc(GnuMessage.Handshake, gcm + " repeat due to " + Enum.GetName(typeof(EC.errNo), result));
 					}
 
 					/* Small delay before repeat */
 					Thread.Sleep(0);
 
 					switch (result) {
-						case (int)EC.en.GNUTLS_E_WARNING_ALERT_RECEIVED:
+						case (int)EC.errNo.GNUTLS_E_WARNING_ALERT_RECEIVED:
 							Logging.LogGnuFunc(GnuMessage.Alert, "Warning alert received: " + GnuTls.GnuTlsAlertGetName(GnuTls.GnuTlsAlertGet(session)));
 							break;
-						case (int)EC.en.GNUTLS_E_FATAL_ALERT_RECEIVED:
+						case (int)EC.errNo.GNUTLS_E_FATAL_ALERT_RECEIVED:
 							Logging.LogGnuFunc(GnuMessage.Alert, "Fatal alert received: " + GnuTls.GnuTlsAlertGetName(GnuTls.GnuTlsAlertGet(session)));
 							break;
 						default:
@@ -877,7 +877,7 @@ namespace FluentFTP.GnuTLS.Core {
 			do {
 				long msElapsed = stopWatch.ElapsedMilliseconds;
 				if (msElapsed > ctimeout) {
-					GnuUtils.Check(gcm, (int)EC.en.GNUTLS_E_SOCKET);
+					GnuUtils.Check(gcm, (int)EC.errNo.GNUTLS_E_SOCKET);
 					return 0;
 				}
 
@@ -889,7 +889,7 @@ namespace FluentFTP.GnuTLS.Core {
 					repeatCount++;
 
 					if (repeatCount <= 2 || repeatCount % 100 == 0) {
-						Logging.LogGnuFunc(GnuMessage.Handshake, gcm + " repeat due to " + Enum.GetName(typeof(EC.en), result));
+						Logging.LogGnuFunc(GnuMessage.Handshake, gcm + " repeat due to " + Enum.GetName(typeof(EC.errNo), result));
 					}
 
 					/* Small delay before repeat */
@@ -901,7 +901,7 @@ namespace FluentFTP.GnuTLS.Core {
 
 			stopWatch.Stop();
 
-			return GnuUtils.Check(gcm, result, new int[] { (int)EC.en.GNUTLS_E_INVALID_SESSION, (int)EC.en.GNUTLS_E_PUSH_ERROR });
+			return GnuUtils.Check(gcm, result, new int[] { (int)EC.errNo.GNUTLS_E_INVALID_SESSION, (int)EC.errNo.GNUTLS_E_PUSH_ERROR });
 		}
 
 		// void gnutls_handshake_set_timeout (gnutls_session_t session, unsigned int ms)
@@ -1101,7 +1101,7 @@ namespace FluentFTP.GnuTLS.Core {
 
 			DatumT data = new DatumT();
 
-			_ = GnuUtils.Check(gcm, gnutls_alpn_get_selected_protocol_h(session.ptr, data), (int)EC.en.GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE);
+			_ = GnuUtils.Check(gcm, gnutls_alpn_get_selected_protocol_h(session.ptr, data), (int)EC.errNo.GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE);
 
 			return Marshal.PtrToStringAnsi(data.ptr);
 		}
