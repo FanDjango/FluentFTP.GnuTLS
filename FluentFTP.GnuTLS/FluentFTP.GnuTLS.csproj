@@ -21,7 +21,8 @@
 	</PropertyGroup>
 
     <PropertyGroup>
-		<TargetFrameworks>net6.0;net5.0;netstandard2.0;netstandard2.1;net472;net462</TargetFrameworks>
+		<TargetFrameworks>net7.0;net8.0;net9.0;netstandard2.0;netstandard2.1;net472;net462</TargetFrameworks>
+		<Platforms>AnyCPU;x64</Platforms>
 		<!--
 		    default: content;contentFiles
 
