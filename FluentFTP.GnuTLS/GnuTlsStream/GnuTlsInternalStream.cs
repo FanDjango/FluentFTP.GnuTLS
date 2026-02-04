@@ -128,7 +128,7 @@ namespace FluentFTP.GnuTLS {
 					// On constructing the first instance of GnuTlsStream, setup:
 					// 1. Logging init
 					// 2. Make sure GnuTls version corresponds to our Native. and Enums.
-					// 3. Loggin attach
+					// 3. Logging attach
 
 					Logging.InitLogging(elog, logMaxLevel, logDebugInformationMessages, logQueueMaxSize);
 
@@ -169,8 +169,7 @@ namespace FluentFTP.GnuTLS {
 			// Setup Session Resume
 			if (streamToResumeFrom != null) {
 				Logging.LogGnuFunc(GnuMessage.Handshake, "Session resume - Using session data from control connection");
-				DatumT resumeDataTLS;
-				GnuTls.GnuTlsSessionGetData2(streamToResumeFrom.sess, out resumeDataTLS);
+				GnuTls.GnuTlsSessionGetData2(streamToResumeFrom.sess, out DatumT resumeDataTLS);
 				GnuTls.GnuTlsSessionSetData(sess, resumeDataTLS);
 				GnuTls.GnuTlsFree(resumeDataTLS.ptr);
 			}
@@ -198,7 +197,14 @@ namespace FluentFTP.GnuTLS {
 						int count = GnuTls.GnuTlsRecordCheckPending(sess);
 						if (count > 0) {
 							byte[] buf = new byte[count];
-							Read(buf, 0, count);
+							int totalRead = 0;
+							while (totalRead < count) {
+								int bytesRead = Read(buf, totalRead, count - totalRead);
+								if (bytesRead <= 0) {
+									break;
+								}
+								totalRead += bytesRead;
+							}
 						}
 						GnuTls.GnuTlsBye(sess, CloseRequestT.GNUTLS_SHUT_RDWR, ctimeout);
 					}
@@ -250,13 +256,13 @@ namespace FluentFTP.GnuTLS {
 			do {
 				long msElapsed = stopWatch.ElapsedMilliseconds;
 				if (msElapsed > ctimeout) {
-					GnuUtils.Check("*GnuTlsRecordRecv(...)", (int)EC.en.GNUTLS_E_SOCKET, false);
+					GnuUtils.Check("*GnuTlsRecordRecv(...)", (int)EC.errNo.GNUTLS_E_SOCKET, false);
 					return 0;
 				}
 
 				result = GnuTls.GnuTlsRecordRecv(sess, buffer, maxCount);
 
-				if (result >= (int)EC.en.GNUTLS_E_SUCCESS) {
+				if (result >= (int)EC.errNo.GNUTLS_E_SUCCESS) {
 					break;
 				}
 
@@ -266,17 +272,17 @@ namespace FluentFTP.GnuTLS {
 					repeatCount++;
 
 					if (repeatCount <= MaxInitialRepeats || repeatCount % LogRepeatInterval == 0) {
-						Logging.LogGnuFunc(gnm, "*GnuTlsRecordRecv(...) repeat due to " + Enum.GetName(typeof(EC.en), result));
+						Logging.LogGnuFunc(gnm, "*GnuTlsRecordRecv(...) repeat due to " + Enum.GetName(typeof(EC.errNo), result));
 					}
 
 					/* Small delay before repeat */
 					Thread.Sleep(0);
 
 					switch (result) {
-						case (int)EC.en.GNUTLS_E_WARNING_ALERT_RECEIVED:
+						case (int)EC.errNo.GNUTLS_E_WARNING_ALERT_RECEIVED:
 							Logging.LogGnuFunc(GnuMessage.Alert, "Warning alert received: " + GnuTls.GnuTlsAlertGetName(GnuTls.GnuTlsAlertGet(sess)));
 							break;
-						case (int)EC.en.GNUTLS_E_FATAL_ALERT_RECEIVED:
+						case (int)EC.errNo.GNUTLS_E_FATAL_ALERT_RECEIVED:
 							Logging.LogGnuFunc(GnuMessage.Alert, "Fatal alert received: " + GnuTls.GnuTlsAlertGetName(GnuTls.GnuTlsAlertGet(sess)));
 							break;
 						default:
@@ -325,12 +331,12 @@ namespace FluentFTP.GnuTLS {
 				do {
 					long msElapsed = stopWatch.ElapsedMilliseconds;
 					if (msElapsed > ctimeout) {
-						GnuUtils.Check("*GnuTlsRecordSend(...)", (int)EC.en.GNUTLS_E_SOCKET, false);
+						GnuUtils.Check("*GnuTlsRecordSend(...)", (int)EC.errNo.GNUTLS_E_SOCKET, false);
 						return;
 					}
 
 					result = GnuTls.GnuTlsRecordSend(sess, buf, Math.Min(buf.Length, MaxRecordSize));
-					if (result >= (int)EC.en.GNUTLS_E_SUCCESS) {
+					if (result >= (int)EC.errNo.GNUTLS_E_SUCCESS) {
 						break;
 					}
 
@@ -340,17 +346,17 @@ namespace FluentFTP.GnuTLS {
 						repeatCount++;
 
 						if (repeatCount <= MaxInitialRepeats || repeatCount % LogRepeatInterval == 0) {
-							Logging.LogGnuFunc(gnm, "*GnuTlsRecordSend(...) repeat due to " + Enum.GetName(typeof(EC.en), result));
+							Logging.LogGnuFunc(gnm, "*GnuTlsRecordSend(...) repeat due to " + Enum.GetName(typeof(EC.errNo), result));
 						}
 
 						/* Small delay before repeat */
 						Thread.Sleep(0);
 
 						switch (result) {
-							case (int)EC.en.GNUTLS_E_WARNING_ALERT_RECEIVED:
+							case (int)EC.errNo.GNUTLS_E_WARNING_ALERT_RECEIVED:
 								Logging.LogGnuFunc(GnuMessage.Alert, "Warning alert received: " + GnuTls.GnuTlsAlertGetName(GnuTls.GnuTlsAlertGet(sess)));
 								break;
-							case (int)EC.en.GNUTLS_E_FATAL_ALERT_RECEIVED:
+							case (int)EC.errNo.GNUTLS_E_FATAL_ALERT_RECEIVED:
 								Logging.LogGnuFunc(GnuMessage.Alert, "Fatal alert received: " + GnuTls.GnuTlsAlertGetName(GnuTls.GnuTlsAlertGet(sess)));
 								break;
 							default:

@@ -98,26 +98,26 @@ namespace FluentFTP.GnuTLS.Core {
 		public static bool NeedRepeat(RepeatType type, int result) {
 			switch (type) {
 				case RepeatType.Read:
-					return result == (int)EC.en.GNUTLS_E_AGAIN ||
-						   result == (int)EC.en.GNUTLS_E_INTERRUPTED ||
-						   result == (int)EC.en.GNUTLS_E_WARNING_ALERT_RECEIVED ||
-						   result == (int)EC.en.GNUTLS_E_FATAL_ALERT_RECEIVED;
+					return result == (int)EC.errNo.GNUTLS_E_AGAIN ||
+						   result == (int)EC.errNo.GNUTLS_E_INTERRUPTED ||
+						   result == (int)EC.errNo.GNUTLS_E_WARNING_ALERT_RECEIVED ||
+						   result == (int)EC.errNo.GNUTLS_E_FATAL_ALERT_RECEIVED;
 
 				case RepeatType.Write:
-					return result == (int)EC.en.GNUTLS_E_AGAIN ||
-				           result == (int)EC.en.GNUTLS_E_INTERRUPTED ||
-						   result == (int)EC.en.GNUTLS_E_WARNING_ALERT_RECEIVED ||
-						   result == (int)EC.en.GNUTLS_E_FATAL_ALERT_RECEIVED;
+					return result == (int)EC.errNo.GNUTLS_E_AGAIN ||
+				           result == (int)EC.errNo.GNUTLS_E_INTERRUPTED ||
+						   result == (int)EC.errNo.GNUTLS_E_WARNING_ALERT_RECEIVED ||
+						   result == (int)EC.errNo.GNUTLS_E_FATAL_ALERT_RECEIVED;
 
 				case RepeatType.Handshake:
-					return result == (int)EC.en.GNUTLS_E_AGAIN ||
-						   result == (int)EC.en.GNUTLS_E_INTERRUPTED ||
-						   result == (int)EC.en.GNUTLS_E_WARNING_ALERT_RECEIVED ||
-					       result == (int)EC.en.GNUTLS_E_GOT_APPLICATION_DATA;
+					return result == (int)EC.errNo.GNUTLS_E_AGAIN ||
+						   result == (int)EC.errNo.GNUTLS_E_INTERRUPTED ||
+						   result == (int)EC.errNo.GNUTLS_E_WARNING_ALERT_RECEIVED ||
+					       result == (int)EC.errNo.GNUTLS_E_GOT_APPLICATION_DATA;
 
 				case RepeatType.Bye:
-					return result == (int)EC.en.GNUTLS_E_AGAIN ||
-						   result == (int)EC.en.GNUTLS_E_INTERRUPTED;
+					return result == (int)EC.errNo.GNUTLS_E_AGAIN ||
+						   result == (int)EC.errNo.GNUTLS_E_INTERRUPTED;
 			}
 			return false;
 		}
@@ -209,13 +209,15 @@ namespace FluentFTP.GnuTLS.Core {
 			target = ".NET 7.0";
 #elif NET8_0
 			target = ".NET 8.0";
-#elif NET8_0_OR_GREATER
-			target = ".NET 8.0+";
+#elif NET9_0
+			target = ".NET 9.0";
+#elif NET10_0_OR_GREATER
+			target = ".NET 10.0+";
 #endif
 
-#if NET5_0 || NET6_0 || NETSTANDARD2_0 || NETSTANDARD2_1 || NET462 || NET472
+#if NET7_0 || NET8_0 || NET9_0 || NETSTANDARD2_0 || NETSTANDARD2_1 || NET462 || NET472
 #else
-#error .csproj: TFM must be either net5.0, net6.0, netstandard2.0, netstandard2.1, net462 or net472
+#error .csproj: TFM must be either net7.0, net8.0, net9.0, netstandard2.0, netstandard2.1, net462 or net472
 #endif
 			return target;
 		}
