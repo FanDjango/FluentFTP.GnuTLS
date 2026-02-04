@@ -128,17 +128,17 @@ namespace FluentFTP.GnuTLS.Core {
 		}
 		#endregion
 
-		#region FunctionLoaderMono
-		private class FunctionLoaderMono : FunctionLoader {
-			private const string dllNameMonoUtil = @"libdl";
+		#region FunctionLoaderOSX
+		private class FunctionLoaderOSX : FunctionLoader {
+			private const string dllNameOSXUtil = @"libdl.dylib";
 
-			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlerror();
-			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlopen([MarshalAs(UnmanagedType.LPStr)] string filename, int flags);
-			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlsym(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string symbol);
-			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern int dlclose(IntPtr handle);
 
 			public void Load(string dllPath, bool storePointer = true) {
@@ -218,17 +218,17 @@ namespace FluentFTP.GnuTLS.Core {
 		}
 		#endregion
 
-		#region FunctionLoaderOSX
-		private class FunctionLoaderOSX : FunctionLoader {
-			private const string dllNameOSXUtil = @"libdl.dylib";
+		#region FunctionLoaderMono
+		private class FunctionLoaderMono : FunctionLoader {
+			private const string dllNameMonoUtil = @"libdl";
 
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlerror();
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlopen([MarshalAs(UnmanagedType.LPStr)] string filename, int flags);
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern IntPtr dlsym(IntPtr handle, [MarshalAs(UnmanagedType.LPStr)] string symbol);
-			[DllImport(dllNameOSXUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+			[DllImport(dllNameMonoUtil, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
 			private static extern int dlclose(IntPtr handle);
 
 			public void Load(string dllPath, bool storePointer = true) {
@@ -456,17 +456,17 @@ namespace FluentFTP.GnuTLS.Core {
 					functionLoader = new FunctionLoaderLinux();
 					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for linux)");
 				}
-				else if (IsMono) {
-					// Mono
-					useDllName = @"libgnutls";
-					functionLoader = new FunctionLoaderMono();
-					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for mono)");
-				}
 				else if (IsOSX) {
 					// OSX
 					useDllName = loadLibraryDllNamePrefix + @"libgnutls.30.dylib";
 					functionLoader = new FunctionLoaderOSX();
 					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for OSX)");
+				}
+				else if (IsMono) {
+					// Mono
+					useDllName = @"libgnutls";
+					functionLoader = new FunctionLoaderMono();
+					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for mono)");
 				}
 				else {
 					// Unsupported Unix platform
