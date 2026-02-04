@@ -57,7 +57,6 @@ namespace FluentFTP.GnuTLS {
 				config.LogLevel,
 				config.LogMessages,
 				config.LogLength);
-
 		}
 
 		public bool Validate() {
