@@ -128,7 +128,7 @@ namespace FluentFTP.GnuTLS {
 					// On constructing the first instance of GnuTlsStream, setup:
 					// 1. Logging init
 					// 2. Make sure GnuTls version corresponds to our Native. and Enums.
-					// 3. Loggin attach
+					// 3. Logging attach
 
 					Logging.InitLogging(elog, logMaxLevel, logDebugInformationMessages, logQueueMaxSize);
 
@@ -169,8 +169,7 @@ namespace FluentFTP.GnuTLS {
 			// Setup Session Resume
 			if (streamToResumeFrom != null) {
 				Logging.LogGnuFunc(GnuMessage.Handshake, "Session resume - Using session data from control connection");
-				DatumT resumeDataTLS;
-				GnuTls.GnuTlsSessionGetData2(streamToResumeFrom.sess, out resumeDataTLS);
+				GnuTls.GnuTlsSessionGetData2(streamToResumeFrom.sess, out DatumT resumeDataTLS);
 				GnuTls.GnuTlsSessionSetData(sess, resumeDataTLS);
 				GnuTls.GnuTlsFree(resumeDataTLS.ptr);
 			}
