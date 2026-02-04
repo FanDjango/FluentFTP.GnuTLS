@@ -81,7 +81,9 @@ namespace FluentFTP.GnuTLS {
 			X509Certificate valCert = null;
 
 			if (!string.IsNullOrEmpty(serverCertificate)) {
+#pragma warning disable SYSLIB0057 // Type or member is obsolete
 				valCert = new X509Certificate2(Encoding.ASCII.GetBytes(serverCertificate));
+#pragma warning restore SYSLIB0057 // Type or member is obsolete
 			}
 
 			//
@@ -198,8 +200,8 @@ namespace FluentFTP.GnuTLS {
 				//Logging.LogGnuFunc("Certificate type: Raw Public Key, list contains " + numData);
 
 				IntPtr cert = IntPtr.Zero;
-				PkAlgorithmT algo;
-				DatumT cinfo = new();
+				// PkAlgorithmT algo;
+				// DatumT cinfo = new();
 
 				int result;
 
