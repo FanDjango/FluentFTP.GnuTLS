@@ -458,7 +458,12 @@ namespace FluentFTP.GnuTLS.Core {
 				}
 				else if (IsOSX) {
 					// OSX
-					useDllName = loadLibraryDllNamePrefix + @"libgnutls.30.dylib";
+					if (loadLibraryDllNamePrefix == string.Empty) {
+						useDllName = @"/opt/homebrew/lib/libgnutls.30.dylib";
+					}
+					else { 
+						useDllName = loadLibraryDllNamePrefix + @"libgnutls.30.dylib";
+					}
 					functionLoader = new FunctionLoaderOSX();
 					Logging.LogGnuFunc(GnuMessage.FunctionLoader, "*Load (Load dll libraries for OSX)");
 				}
